@@ -1,39 +1,38 @@
 version: '3.8'
 
 services:
-  apache:
-    build: ./apache
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./projects:/var/www/html
-    depends_on:
-      - php
-
   php:
     build: ./php
+    container_name: php
     volumes:
       - ./projects:/var/www/html
+    working_dir: /var/www/html
+    ports:
+      - "8000:8000"
+    tty: true
+    depends_on:
+      - mariadb
 
-  db:
-    image: mariadb:10.4
+  mariadb:
+    image: mariadb:10.4.32
+    container_name: mariadb
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
     volumes:
-      - db_data:/var/lib/mysql
+      - ./db_data:/var/lib/mysql
+      - ./mysql:/docker-entrypoint-initdb.d
 
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin
+    image: phpmyadmin/phpmyadmin:5.2.1
+    container_name: phpmyadmin
     restart: always
     ports:
-      - "8080:80"
+      - 8080:80
     environment:
-      PMA_HOST: db
-      PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: root
+      PMA_HOST: mariadb
+      PMA_USER: root
+      PMA_PASSWORD: root
     depends_on:
-      - db
+      - mariadb
 
-volumes:
-  db_data:

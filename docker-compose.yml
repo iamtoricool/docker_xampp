@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # Apache + PHP 8.2.4 (with required extensions)
+  apache_php:
+    image: php:8.2.4-fpm  # Base PHP-FPM image [[2]]
+    container_name: apache_php
+    build:
+      context: .
+      dockerfile: Dockerfile.apache_php  # Custom Dockerfile for extensions
+    ports:
+      - "80:80"  # Apache HTTP
+      - "443:443"  # HTTPS (if needed)
+    volumes:
+      - ./www:/var/www/html  # Mount your Laravel/PHP projects here
+      - ./apache.conf:/usr/local/etc/php-fpm.d/zzz-custom.conf  # Apache config
+    environment:
+      PHP_EXTENSIONS: mbstring pdo_mysql gd xsl xmlrpc soap intl zip bcmath opcache  # Enable PHP extensions [[2]]
+    networks:
+      - xampp_network
+
+  # MariaDB 10.4.32
+  mariadb:
+    image: mariadb:10.4.32  # Specific MariaDB version [[10]]
+    container_name: mariadb
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: laravel
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - xampp_network
+
+  # phpMyAdmin 5.2.1
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.2.1  # Specific version [[9]]
+    container_name: phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mariadb
+      MYSQL_ROOT_PASSWORD: root
+    depends_on:
+      - mariadb
+    networks:
+      - xampp_network
+
+  # Additional Tools (ProFTPD, Perl, etc.)
+  tools:
+    image: ubuntu:22.04  # Base image for extra tools
+    container_name: tools
+    build:
+      context: .
+      dockerfile: Dockerfile.tools  # Install ProFTPD, Perl, etc.
+    stdin_open: true
+    tty: true
+    networks:
+      - xampp_network
+
+volumes:
+  mariadb_data:
+
+networks:
+  xampp_network:
+    driver: bridge

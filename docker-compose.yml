@@ -16,10 +16,10 @@ services:
     container_name: mariadb
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: test_db
     volumes:
       - ./db_data:/var/lib/mysql
-      - ./mysql:/docker-entrypoint-initdb.d
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin:5.2.1
@@ -30,7 +30,6 @@ services:
     environment:
       PMA_HOST: mariadb
       PMA_USER: root
-      PMA_PASSWORD: root
+      PMA_PASSWORD: ""
     depends_on:
       - mariadb
-

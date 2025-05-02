@@ -4,15 +4,20 @@ function dxampp() {
   PROJECTS_DIR="$DXAMPP_DIR/projects"
   PHP_SERVICE="php"
 
-  if [ -L "$PROJECTS_DIR" ] && [ -d "$PROJECTS_DIR" ]; then
-    PROJECTS_REALPATH=$(readlink -f "$PROJECTS_DIR")
-    echo "Symlink detected: $PROJECTS_DIR → $PROJECTS_REALPATH" >&2
-  elif [ -d "$PROJECTS_DIR" ]; then
-    PROJECTS_REALPATH="$PROJECTS_DIR"
-  else
-    echo "Error: $PROJECTS_DIR is not a valid directory or symlink." >&2
+  if [ ! -d "$PROJECTS_DIR" ]; then
+    echo "Error: '$PROJECTS_DIR' does not exist." >&2
     return 1
   fi
+  PROJECTS_REALPATH=$(realpath "$PROJECTS_DIR")
+
+  CURRENT_REALPATH=$(realpath "$PWD")
+  if [[ "$CURRENT_REALPATH" != "$PROJECTS_REALPATH"* ]]; then
+    echo "Error: You must be inside '$PROJECTS_REALPATH' to run this command." >&2
+    return 1
+  fi
+
+  RELATIVE_PATH="${CURRENT_REALPATH#$PROJECTS_REALPATH/}"
+  CONTAINER_PATH="/var/www/html/$RELATIVE_PATH"
 
   case "$1" in
     start)
@@ -32,33 +37,18 @@ function dxampp() {
       docker compose -f "$COMPOSE_FILE" exec -it "$PHP_SERVICE" bash
       ;;
     composer)
-      if [[ "$CURRENT_REALPATH" != "$PROJECTS_REALPATH"* ]]; then
-        echo "Error: You must be inside '$PROJECTS_DIR' to use Composer." >&2
-        return 1
-      fi
-
-      RELATIVE_PATH="${CURRENT_REALPATH#$PROJECTS_REALPATH/}"
-      CONTAINER_PATH="/var/www/html/$RELATIVE_PATH"
-
-      echo "Running Composer in container path: $CONTAINER_PATH"
-      docker compose -f "$COMPOSE_FILE" exec -w "$CONTAINER_PATH" "$PHP_SERVICE" composer "$2"
+      shift
+      echo "Running Composer in: $CONTAINER_PATH"
+      docker compose -f "$COMPOSE_FILE" exec -w "$CONTAINER_PATH" "$PHP_SERVICE" composer "$@"
       ;;
     php)
-      if [[ "$CURRENT_REALPATH" != "$PROJECTS_REALPATH"* ]]; then
-        echo "Error: You must be inside '$PROJECTS_DIR' to run PHP commands." >&2
-        return 1
-      fi
-
-      RELATIVE_PATH="${CURRENT_REALPATH#$PROJECTS_REALPATH/}"
-      CONTAINER_PATH="/var/www/html/$RELATIVE_PATH"
-      
       shift
-      
-      echo "Running PHP command in container path: $CONTAINER_PATH"
+      echo "Running PHP in: $CONTAINER_PATH"
       docker compose -f "$COMPOSE_FILE" exec -w "$CONTAINER_PATH" "$PHP_SERVICE" php "$@"
       ;;
     *)
-      echo "Usage: dxampp {start|stop|restart|shell|composer|php}"
+      echo "Usage: dxampp {start|stop|restart|shell|composer|php}" >&2
       return 1
+      ;;
   esac
 }

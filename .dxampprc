@@ -1,0 +1,54 @@
+function dxampp() {
+  DXAMPP_DIR="$HOME/Desktop/docker_xampp"
+  COMPOSE_FILE="$DXAMPP_DIR/docker-compose.yml"
+  PROJECTS_DIR="$DXAMPP_DIR/projects"
+  PHP_SERVICE="php"
+
+  case "$1" in
+    start)
+      echo "Starting XAMPP containers..."
+      docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
+      ;;
+    stop)
+      echo "Stopping XAMPP containers..."
+      docker compose -f "$COMPOSE_FILE" down -v --remove-orphans
+      ;;
+    restart)
+      echo "Restarting XAMPP..."
+      dxampp stop && dxampp start
+      ;;
+    shell)
+      echo "Opening shell in PHP container..."
+      docker compose -f "$COMPOSE_FILE" exec -it "$PHP_SERVICE" bash
+      ;;
+    composer)
+      if [[ "$PWD" != "$PROJECTS_DIR"* ]]; then
+        echo "Error: You must be inside '$PROJECTS_DIR' to use Composer." >&2
+        return 1
+      fi
+
+      RELATIVE_PATH="${PWD#$PROJECTS_DIR/}"
+      CONTAINER_PATH="/var/www/html/$RELATIVE_PATH"
+
+      echo "Running Composer in container path: $CONTAINER_PATH"
+      docker compose -f "$COMPOSE_FILE" exec -w "$CONTAINER_PATH" "$PHP_SERVICE" composer "$2"
+      ;;
+    php)
+      if [[ "$PWD" != "$PROJECTS_DIR"* ]]; then
+        echo "Error: You must be inside '$PROJECTS_DIR' to run PHP commands." >&2
+        return 1
+      fi
+
+      RELATIVE_PATH="${PWD#$PROJECTS_DIR/}"
+      CONTAINER_PATH="/var/www/html/$RELATIVE_PATH"
+      
+      shift
+      
+      echo "Running PHP command in container path: $CONTAINER_PATH"
+      docker compose -f "$COMPOSE_FILE" exec -w "$CONTAINER_PATH" "$PHP_SERVICE" php "$@"
+      ;;
+    *)
+      echo "Usage: dxampp {start|stop|restart|shell}"
+      return 1
+  esac
+}

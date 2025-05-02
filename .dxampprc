@@ -4,6 +4,16 @@ function dxampp() {
   PROJECTS_DIR="$DXAMPP_DIR/projects"
   PHP_SERVICE="php"
 
+  if [ -L "$PROJECTS_DIR" ] && [ -d "$PROJECTS_DIR" ]; then
+    PROJECTS_REALPATH=$(readlink -f "$PROJECTS_DIR")
+    echo "Symlink detected: $PROJECTS_DIR → $PROJECTS_REALPATH" >&2
+  elif [ -d "$PROJECTS_DIR" ]; then
+    PROJECTS_REALPATH="$PROJECTS_DIR"
+  else
+    echo "Error: $PROJECTS_DIR is not a valid directory or symlink." >&2
+    return 1
+  fi
+
   case "$1" in
     start)
       echo "Starting XAMPP containers..."
@@ -22,24 +32,24 @@ function dxampp() {
       docker compose -f "$COMPOSE_FILE" exec -it "$PHP_SERVICE" bash
       ;;
     composer)
-      if [[ "$PWD" != "$PROJECTS_DIR"* ]]; then
+      if [[ "$CURRENT_REALPATH" != "$PROJECTS_REALPATH"* ]]; then
         echo "Error: You must be inside '$PROJECTS_DIR' to use Composer." >&2
         return 1
       fi
 
-      RELATIVE_PATH="${PWD#$PROJECTS_DIR/}"
+      RELATIVE_PATH="${CURRENT_REALPATH#$PROJECTS_REALPATH/}"
       CONTAINER_PATH="/var/www/html/$RELATIVE_PATH"
 
       echo "Running Composer in container path: $CONTAINER_PATH"
       docker compose -f "$COMPOSE_FILE" exec -w "$CONTAINER_PATH" "$PHP_SERVICE" composer "$2"
       ;;
     php)
-      if [[ "$PWD" != "$PROJECTS_DIR"* ]]; then
+      if [[ "$CURRENT_REALPATH" != "$PROJECTS_REALPATH"* ]]; then
         echo "Error: You must be inside '$PROJECTS_DIR' to run PHP commands." >&2
         return 1
       fi
 
-      RELATIVE_PATH="${PWD#$PROJECTS_DIR/}"
+      RELATIVE_PATH="${CURRENT_REALPATH#$PROJECTS_REALPATH/}"
       CONTAINER_PATH="/var/www/html/$RELATIVE_PATH"
       
       shift

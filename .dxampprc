@@ -48,7 +48,7 @@ function dxampp() {
       docker compose -f "$COMPOSE_FILE" exec -w "$CONTAINER_PATH" "$PHP_SERVICE" php "$@"
       ;;
     *)
-      echo "Usage: dxampp {start|stop|restart|shell}"
+      echo "Usage: dxampp {start|stop|restart|shell|composer|php}"
       return 1
   esac
 }
